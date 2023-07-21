@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    /* Visit https://aka.ms/tsconfig to read more about this file */
+
+    /* Language and Environment */
+    "target": "ES2020", // or higher
+    "module": "nodenext" /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */,
+   
+    /* Interop Constraints */
+    // "isolatedModules": true,                          /* Ensure that each file can be safely transpiled without relying on other imports. */
+    // "verbatimModuleSyntax": true,                     /* Do not transform or elide any imports or exports not marked as type-only, ensuring they are written in the output file's format based on the 'module' setting. */
+    // "allowSyntheticDefaultImports": true,             /* Allow 'import x from y' when a module doesn't have a default export. */
+    // "preserveSymlinks": true,                         /* Disable resolving symlinks to their realpath. This correlates to the same flag in node. */
+    "forceConsistentCasingInFileNames": true ,
+    "baseUrl": ".",
+    "moduleResolution": "node",
+    "rootDir": ".",
+    "allowJs": true,
+    "importHelpers": true,
+
+
+    /* Type Checking */
+    // "noImplicitAny": true,                            /* Enable error reporting for expressions and declarations with an implied 'any' type. */
+
+    "skipLibCheck": true /* Skip type checking all .d.ts files. */
+  }
+}
