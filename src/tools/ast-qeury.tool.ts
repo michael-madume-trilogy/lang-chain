@@ -12,19 +12,24 @@ import {
 import path from "path";
 import {
   AST_QUERY_DESCRIPTION,
-  AST_VECTOR_STORE_SELF_QUERY_DESCRIPTION,
+  CODE_QUERY_DESCRIPTION,
+  REPO_VECTOR_STORE_SELF_QUERY_DESCRIPTION,
+  SEARCH_REPEATED_ERROR,
 } from "../prompts/repo-query-tool.promp";
-import { getDumbModel } from "../utils/models.util";
+import { getSmartModel } from "../utils/models.util";
+import logger, { MyCallbackHandler } from "../utils/logger.util";
 import { AST_SCHEMA } from "../schemas/ast.schema";
 
+const SIMILARITY_COUNT = 200;
 const queries: { question: string; metaData: string; answer?: string }[] = [];
 
 export const astQueryTool = new DynamicStructuredTool({
-  name: "monorepo-ast-search",
+  name: "monorepo-abstract-syntax-tree-qa",
   description: AST_QUERY_DESCRIPTION,
   schema: AST_SCHEMA,
+  callbacks: [new MyCallbackHandler()],
   func: async (data) => {
-    const dir = path.join(process.env.STORE_FOLDER_URL, "ast");
+    const dir = path.join(process.env.STORE_FOLDER_URL, "repo");
     const vectorStore = await HNSWLib.load(dir, new OpenAIEmbeddings());
     const currentQuery: {
       question: string;
@@ -38,9 +43,10 @@ export const astQueryTool = new DynamicStructuredTool({
         query.metaData === currentQuery.metaData
     );
     if (repeatedQuery) {
-      return `Try to change your question, You have asked this question before and here was the answer:
-      ${repeatedQuery.answer}
+      const ans = `${SEARCH_REPEATED_ERROR} ${repeatedQuery.question}
       `;
+      logger.warn(ans);
+      return ans;
     }
     queries.push(currentQuery);
 
@@ -48,12 +54,12 @@ export const astQueryTool = new DynamicStructuredTool({
     let docs: Document<Record<string, any>>[] = [];
     try {
       const selfQueryRetriever = SelfQueryRetriever.fromLLM({
-        llm: getDumbModel(),
+        llm: getSmartModel(),
         vectorStore,
-        documentContents: AST_VECTOR_STORE_SELF_QUERY_DESCRIPTION,
+        documentContents: REPO_VECTOR_STORE_SELF_QUERY_DESCRIPTION,
         attributeInfo: [
           {
-            name: "files",
+            name: "source",
             description: "file names to narrow down the search",
             type: "string",
           },
@@ -79,7 +85,7 @@ export const astQueryTool = new DynamicStructuredTool({
           // self query retriever docs
           const retrievedDocs = await vectorStore.similaritySearch(
             JSON.stringify(codebaseInfo),
-            200
+            SIMILARITY_COUNT
           );
           docs.push(...retrievedDocs);
         }
@@ -88,7 +94,7 @@ export const astQueryTool = new DynamicStructuredTool({
       docs.push(
         ...(await vectorStore.similaritySearch(
           JSON.stringify(data.question),
-          200
+          SIMILARITY_COUNT
         ))
       );
     } catch (error) {}
@@ -101,17 +107,16 @@ export const astQueryTool = new DynamicStructuredTool({
     const contextualCompRetriever = (
       await HNSWLib.fromDocuments(docs, new OpenAIEmbeddings())
     ).asRetriever();
-    const baseCompressor = LLMChainExtractor.fromLLM(getDumbModel());
+    const baseCompressor = LLMChainExtractor.fromLLM(getSmartModel());
 
     const ccRetriever = new ContextualCompressionRetriever({
       baseCompressor,
       baseRetriever: contextualCompRetriever,
       verbose: true,
     });
-
     const ccDocs = await ccRetriever.getRelevantDocuments(data.question);
-    console.log(ccDocs.length);
-    const qaRefineChain = loadQARefineChain(getDumbModel(), { verbose: true });
+
+    const qaRefineChain = loadQARefineChain(getSmartModel(), { verbose: true });
     const res = await qaRefineChain.call({
       input_documents: ccDocs.length ? ccDocs : docs.slice(0, 15),
       question: data.question,

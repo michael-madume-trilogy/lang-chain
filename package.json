@@ -2,10 +2,10 @@
   "name": "langchain",
   "version": "1.0.0",
   "description": "A lang-chain demo",
-  "main": "src/index.ts",
+  "main": "src/main.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "develop": "npx ts-node src/index.ts"
+    "develop": "npx ts-node src/main.ts"
   },
   "author": {
     "name": "Michael Madume",

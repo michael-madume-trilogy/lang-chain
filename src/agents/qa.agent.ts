@@ -8,7 +8,7 @@ import { MyCallbackHandler } from "../utils/logger.util";
 
 export const initRepoQaAgent = async () => {
   return await initializeAgentExecutorWithOptions(
-    [repoQueryTool],
+    [repoQueryTool, astQueryTool],
     getSmartModel(),
     {
       agentType: "structured-chat-zero-shot-react-description",

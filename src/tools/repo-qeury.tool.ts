@@ -13,11 +13,13 @@ import path from "path";
 import {
   CODE_QUERY_DESCRIPTION,
   REPO_VECTOR_STORE_SELF_QUERY_DESCRIPTION,
+  SEARCH_REPEATED_ERROR,
 } from "../prompts/repo-query-tool.promp";
-import { getDumbModel, getSmartModel } from "../utils/models.util";
+import { getSmartModel } from "../utils/models.util";
 import { CODE_QUERY_SCHEMA } from "../schemas/code.schema";
 import logger, { MyCallbackHandler } from "../utils/logger.util";
 
+const SIMILARITY_COUNT = 200;
 const queries: { question: string; metaData: string; answer?: string }[] = [];
 
 export const repoQueryTool = new DynamicStructuredTool({
@@ -40,9 +42,9 @@ export const repoQueryTool = new DynamicStructuredTool({
         query.metaData === currentQuery.metaData
     );
     if (repeatedQuery) {
-      const ans = `You already have all the information you can get from this tool. unless you have a different question from ${repeatedQuery.question}
+      const ans = `${SEARCH_REPEATED_ERROR} ${repeatedQuery.question}
       `;
-      logger.info(ans);
+      logger.warn(ans);
       return ans;
     }
     queries.push(currentQuery);
@@ -82,7 +84,7 @@ export const repoQueryTool = new DynamicStructuredTool({
           // self query retriever docs
           const retrievedDocs = await vectorStore.similaritySearch(
             JSON.stringify(codebaseInfo),
-            200
+            SIMILARITY_COUNT
           );
           docs.push(...retrievedDocs);
         }
@@ -91,7 +93,7 @@ export const repoQueryTool = new DynamicStructuredTool({
       docs.push(
         ...(await vectorStore.similaritySearch(
           JSON.stringify(data.question),
-          200
+          SIMILARITY_COUNT
         ))
       );
     } catch (error) {}
@@ -119,7 +121,6 @@ export const repoQueryTool = new DynamicStructuredTool({
       question: data.question,
     });
     currentQuery.answer = res.output_text ?? "";
-    logger.info(currentQuery.answer);
     return currentQuery.answer;
   },
 });
